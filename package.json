@@ -12,7 +12,7 @@
     "@webassemblyjs/wasm-edit": "1.9.0",
     "@webassemblyjs/wasm-parser": "1.9.0",
     "acorn": "^8.0.4",
-    "browserslist": "^4.14.5",
+    "browserslist": "^4.16.3",
     "chrome-trace-event": "^1.0.2",
     "enhanced-resolve": "^5.3.1",
     "eslint-scope": "^5.1.1",
