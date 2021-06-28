@@ -66,14 +66,22 @@ export type ChunkLoadingType =
 	| ("jsonp" | "import-scripts" | "require" | "async-node")
 	| string;
 /**
- * Specifies the name of each output file on disk. You must **not** specify an absolute path here! The `output.path` option determines the location on disk the files are written to, filename is used solely for naming the individual files.
+ * Specifies the filename of the output file on disk. You must **not** specify an absolute path here, but the path may contain folders separated by '/'! The specified path is joined with the value of the 'output.path' option to determine the location on disk.
  */
-export type Filename =
+export type EntryFilename = FilenameTemplate;
+/**
+ * Specifies the filename template of output files on disk. You must **not** specify an absolute path here, but the path may contain folders separated by '/'! The specified path is joined with the value of the 'output.path' option to determine the location on disk.
+ */
+export type FilenameTemplate =
 	| string
 	| ((
 			pathData: import("../lib/Compilation").PathData,
 			assetInfo?: import("../lib/Compilation").AssetInfo
 	  ) => string);
+/**
+ * Specifies the layer in which modules of this entrypoint are placed.
+ */
+export type Layer = null | string;
 /**
  * Add a comment in the UMD wrapper.
  */
@@ -87,13 +95,14 @@ export type LibraryExport = string[] | string;
  */
 export type LibraryName = string[] | string | LibraryCustomUmdObject;
 /**
- * Type of library (types included by default are 'var', 'module', 'assign', 'this', 'window', 'self', 'global', 'commonjs', 'commonjs2', 'commonjs-module', 'amd', 'amd-require', 'umd', 'umd2', 'jsonp', 'system', but others might be added by plugins).
+ * Type of library (types included by default are 'var', 'module', 'assign', 'assign-properties', 'this', 'window', 'self', 'global', 'commonjs', 'commonjs2', 'commonjs-module', 'amd', 'amd-require', 'umd', 'umd2', 'jsonp', 'system', but others might be added by plugins).
  */
 export type LibraryType =
 	| (
 			| "var"
 			| "module"
 			| "assign"
+			| "assign-properties"
 			| "this"
 			| "window"
 			| "self"
@@ -113,6 +122,19 @@ export type LibraryType =
  * If `output.libraryTarget` is set to umd and `output.library` is set, setting this to true will name the AMD module.
  */
 export type UmdNamedDefine = boolean;
+/**
+ * The 'publicPath' specifies the public URL address of the output files when referenced in a browser.
+ */
+export type PublicPath = "auto" | RawPublicPath;
+/**
+ * The 'publicPath' specifies the public URL address of the output files when referenced in a browser.
+ */
+export type RawPublicPath =
+	| string
+	| ((
+			pathData: import("../lib/Compilation").PathData,
+			assetInfo?: import("../lib/Compilation").AssetInfo
+	  ) => string);
 /**
  * The name of the runtime chunk. If set a runtime chunk with this name is created or an existing entrypoint is used as runtime.
  */
@@ -141,22 +163,14 @@ export type Externals = ExternalItem[] | ExternalItem;
 export type ExternalItem =
 	| RegExp
 	| string
-	| {
-			/**
-			 * The dependency used for the external.
-			 */
-			[k: string]:
-				| string[]
-				| boolean
-				| string
-				| {
-						[k: string]: any;
-				  };
-	  }
-	| ((
-			data: {context: string; request: string},
-			callback: (err?: Error, result?: string) => void
-	  ) => void);
+	| (ExternalItemObjectKnown & ExternalItemObjectUnknown)
+	| (
+			| ((
+					data: ExternalItemFunctionData,
+					callback: (err?: Error, result?: ExternalItemValue) => void
+			  ) => void)
+			| ((data: ExternalItemFunctionData) => Promise<ExternalItemValue>)
+	  );
 /**
  * Specifies the default type of externals ('amd*', 'umd*', 'system' and 'jsonp' depend on output.libraryTarget set to the same value).
  */
@@ -226,21 +240,8 @@ export type RuleSetConditionOrConditions = RuleSetCondition | RuleSetConditions;
 export type RuleSetCondition =
 	| RegExp
 	| string
-	| {
-			/**
-			 * Logical AND.
-			 */
-			and?: RuleSetConditions;
-			/**
-			 * Logical NOT.
-			 */
-			not?: RuleSetConditions;
-			/**
-			 * Logical OR.
-			 */
-			or?: RuleSetConditions;
-	  }
 	| ((value: string) => boolean)
+	| RuleSetLogicalConditions
 	| RuleSetConditions;
 /**
  * A list of rule conditions.
@@ -258,21 +259,8 @@ export type RuleSetConditionOrConditionsAbsolute =
 export type RuleSetConditionAbsolute =
 	| RegExp
 	| string
-	| {
-			/**
-			 * Logical AND.
-			 */
-			and?: RuleSetConditionsAbsolute;
-			/**
-			 * Logical NOT.
-			 */
-			not?: RuleSetConditionsAbsolute;
-			/**
-			 * Logical OR.
-			 */
-			or?: RuleSetConditionsAbsolute;
-	  }
 	| ((value: string) => boolean)
+	| RuleSetLogicalConditionsAbsolute
 	| RuleSetConditionsAbsolute;
 /**
  * A list of rule conditions matching an absolute path.
@@ -352,6 +340,24 @@ export type RuleSetUseItem =
  */
 export type RuleSetRules = ("..." | RuleSetRule)[];
 /**
+ * Specify options for each generator.
+ */
+export type GeneratorOptionsByModuleType = GeneratorOptionsByModuleTypeKnown &
+	GeneratorOptionsByModuleTypeUnknown;
+/**
+ * Don't parse files matching. It's matched against the full resolved request.
+ */
+export type NoParse =
+	| (RegExp | string | Function)[]
+	| RegExp
+	| string
+	| Function;
+/**
+ * Specify options for each parser.
+ */
+export type ParserOptionsByModuleType = ParserOptionsByModuleTypeKnown &
+	ParserOptionsByModuleTypeUnknown;
+/**
  * Name of the configuration. Used when loading multiple configurations.
  */
 export type Name = string;
@@ -390,7 +396,7 @@ export type OptimizationSplitChunksSizes =
 			[k: string]: number;
 	  };
 /**
- * The filename of asset modules as relative path inside the `output.path` directory.
+ * The filename of asset modules as relative path inside the 'output.path' directory.
  */
 export type AssetModuleFilename =
 	| string
@@ -403,14 +409,9 @@ export type AssetModuleFilename =
  */
 export type Charset = boolean;
 /**
- * The filename of non-initial chunks as relative path inside the `output.path` directory.
+ * Specifies the filename template of output files of non-initial chunks on disk. You must **not** specify an absolute path here, but the path may contain folders separated by '/'! The specified path is joined with the value of the 'output.path' option to determine the location on disk.
  */
-export type ChunkFilename =
-	| string
-	| ((
-			pathData: import("../lib/Compilation").PathData,
-			assetInfo?: import("../lib/Compilation").AssetInfo
-	  ) => string);
+export type ChunkFilename = FilenameTemplate;
 /**
  * The format of chunks (formats included by default are 'array-push' (web/WebWorker), 'commonjs' (node.js), but others might be added by plugins).
  */
@@ -423,6 +424,10 @@ export type ChunkLoadTimeout = number;
  * The global variable used by webpack for loading of chunks.
  */
 export type ChunkLoadingGlobal = string;
+/**
+ * Clean the output directory before emit.
+ */
+export type Clean = boolean | CleanOptions;
 /**
  * Check if to be emitted file already exists and have the same content before writing to output filesystem.
  */
@@ -456,6 +461,10 @@ export type EnabledLibraryTypes = LibraryType[];
  */
 export type EnabledWasmLoadingTypes = WasmLoadingType[];
 /**
+ * Specifies the filename of output files on disk. You must **not** specify an absolute path here, but the path may contain folders separated by '/'! The specified path is joined with the value of the 'output.path' option to determine the location on disk.
+ */
+export type Filename = FilenameTemplate;
+/**
  * An expression which is used to address the global object/scope in runtime code.
  */
 export type GlobalObject = string;
@@ -484,7 +493,7 @@ export type HotUpdateChunkFilename = string;
  */
 export type HotUpdateGlobal = string;
 /**
- * The filename of the Hot Update Main File. It is inside the `output.path` directory.
+ * The filename of the Hot Update Main File. It is inside the 'output.path' directory.
  */
 export type HotUpdateMainFilename = string;
 /**
@@ -514,23 +523,13 @@ export type Path = string;
 /**
  * Include comments with information about the modules.
  */
-export type Pathinfo = boolean;
-/**
- * The `publicPath` specifies the public URL address of the output files when referenced in a browser.
- */
-export type PublicPath =
-	| "auto"
-	| string
-	| ((
-			pathData: import("../lib/Compilation").PathData,
-			assetInfo?: import("../lib/Compilation").AssetInfo
-	  ) => string);
+export type Pathinfo = "verbose" | boolean;
 /**
  * This option enables loading async chunks via a custom script type, such as script type="module".
  */
 export type ScriptType = false | "text/javascript" | "module";
 /**
- * The filename of the SourceMaps for the JavaScript files. They are inside the `output.path` directory.
+ * The filename of the SourceMaps for the JavaScript files. They are inside the 'output.path' directory.
  */
 export type SourceMapFilename = string;
 /**
@@ -538,7 +537,11 @@ export type SourceMapFilename = string;
  */
 export type SourcePrefix = string;
 /**
- * Handles exceptions in module loading correctly at a performance cost.
+ * Handles error in module loading correctly at a performance cost. This will handle module error compatible with the EcmaScript Modules spec.
+ */
+export type StrictModuleErrorHandling = boolean;
+/**
+ * Handles exceptions in module loading correctly at a performance cost (Deprecated). This will handle module error compatible with the Node.js CommonJS way.
  */
 export type StrictModuleExceptionHandling = boolean;
 /**
@@ -546,7 +549,7 @@ export type StrictModuleExceptionHandling = boolean;
  */
 export type UniqueName = string;
 /**
- * The filename of WebAssembly modules as relative path inside the `output.path` directory.
+ * The filename of WebAssembly modules as relative path inside the 'output.path' directory.
  */
 export type WebassemblyModuleFilename = string;
 /**
@@ -602,6 +605,51 @@ export type StatsValue =
 	| boolean
 	| StatsOptions;
 /**
+ * Filtering modules.
+ */
+export type ModuleFilterTypes = ModuleFilterItemTypes[] | ModuleFilterItemTypes;
+/**
+ * Filtering value, regexp or function.
+ */
+export type ModuleFilterItemTypes =
+	| RegExp
+	| string
+	| ((
+			name: string,
+			module: import("../lib/stats/DefaultStatsFactoryPlugin").StatsModule,
+			type: "module" | "chunk" | "root-of-chunk" | "nested"
+	  ) => boolean);
+/**
+ * Filtering modules.
+ */
+export type AssetFilterTypes = AssetFilterItemTypes[] | AssetFilterItemTypes;
+/**
+ * Filtering value, regexp or function.
+ */
+export type AssetFilterItemTypes =
+	| RegExp
+	| string
+	| ((
+			name: string,
+			asset: import("../lib/stats/DefaultStatsFactoryPlugin").StatsAsset
+	  ) => boolean);
+/**
+ * Filtering warnings.
+ */
+export type WarningFilterTypes =
+	| WarningFilterItemTypes[]
+	| WarningFilterItemTypes;
+/**
+ * Filtering value, regexp or function.
+ */
+export type WarningFilterItemTypes =
+	| RegExp
+	| string
+	| ((
+			warning: import("../lib/stats/DefaultStatsFactoryPlugin").StatsError,
+			value: string
+	  ) => boolean);
+/**
  * Environment to build for. An array of environments to build for all of them when possible.
  */
 export type Target = string[] | false | string;
@@ -610,6 +658,31 @@ export type Target = string[] | false | string;
  */
 export type Watch = boolean;
 /**
+ * The options for data url generator.
+ */
+export type AssetGeneratorDataUrl =
+	| AssetGeneratorDataUrlOptions
+	| AssetGeneratorDataUrlFunction;
+/**
+ * Function that executes for module and should return an DataUrl string.
+ */
+export type AssetGeneratorDataUrlFunction = (
+	source: string | Buffer,
+	context: {filename: string; module: import("../lib/Module")}
+) => string;
+/**
+ * Generator options for asset modules.
+ */
+export type AssetGeneratorOptions = AssetInlineGeneratorOptions &
+	AssetResourceGeneratorOptions;
+/**
+ * Function that executes for module and should return whenever asset should be inlined as DataUrl.
+ */
+export type AssetParserDataUrlFunction = (
+	source: string | Buffer,
+	context: {filename: string; module: import("../lib/Module")}
+) => boolean;
+/**
  * A Function returning a Promise resolving to a normalized entry.
  */
 export type EntryDynamicNormalized = () => Promise<EntryStaticNormalized>;
@@ -617,6 +690,16 @@ export type EntryDynamicNormalized = () => Promise<EntryStaticNormalized>;
  * The entry point(s) of the compilation.
  */
 export type EntryNormalized = EntryDynamicNormalized | EntryStaticNormalized;
+/**
+ * The dependency used for the external.
+ */
+export type ExternalItemValue =
+	| string[]
+	| boolean
+	| string
+	| {
+			[k: string]: any;
+	  };
 /**
  * Ignore specific warnings.
  */
@@ -795,6 +878,10 @@ export interface WebpackOptions {
  */
 export interface MemoryCacheOptions {
 	/**
+	 * Number of generations unused cache entries stay in memory cache at minimum (1 = may be removed after unused for a single compilation, ..., Infinity: kept forever).
+	 */
+	maxGenerations?: number;
+	/**
 	 * In memory caching.
 	 */
 	type: "memory";
@@ -803,6 +890,10 @@ export interface MemoryCacheOptions {
  * Options object for persistent file-based caching.
  */
 export interface FileCacheOptions {
+	/**
+	 * Allows to collect unused memory allocated during deserialization. This requires copying data into smaller buffers and has a performance cost.
+	 */
+	allowCollectingMemory?: boolean;
 	/**
 	 * Dependencies the build depends on (in multiple categories, default categories: 'defaultWebpack').
 	 */
@@ -825,11 +916,11 @@ export interface FileCacheOptions {
 	 */
 	hashAlgorithm?: string;
 	/**
-	 * Time in ms after which idle period the cache storing should happen (only for store: 'pack' or 'idle').
+	 * Time in ms after which idle period the cache storing should happen (only for store: 'pack').
 	 */
 	idleTimeout?: number;
 	/**
-	 * Time in ms after which idle period the initial cache storing should happen (only for store: 'pack' or 'idle').
+	 * Time in ms after which idle period the initial cache storing should happen (only for store: 'pack').
 	 */
 	idleTimeoutForInitialStore?: number;
 	/**
@@ -841,9 +932,21 @@ export interface FileCacheOptions {
 	 */
 	managedPaths?: string[];
 	/**
+	 * Time for which unused cache entries stay in the filesystem cache at minimum (in milliseconds).
+	 */
+	maxAge?: number;
+	/**
+	 * Number of generations unused cache entries stay in memory cache at minimum (0 = no memory cache used, 1 = may be removed after unused for a single compilation, ..., Infinity: kept forever). Cache entries will be deserialized from disk when removed from memory cache.
+	 */
+	maxMemoryGenerations?: number;
+	/**
 	 * Name for the cache. Different names will lead to different coexisting caches.
 	 */
 	name?: string;
+	/**
+	 * Track and log detailed timing information for individual cache items.
+	 */
+	profile?: boolean;
 	/**
 	 * When to store data to the filesystem. (pack: Store data when compiler is idle in a single file).
 	 */
@@ -885,17 +988,25 @@ export interface EntryDescription {
 	 */
 	dependOn?: string[] | string;
 	/**
-	 * Specifies the name of each output file on disk. You must **not** specify an absolute path here! The `output.path` option determines the location on disk the files are written to, filename is used solely for naming the individual files.
+	 * Specifies the filename of the output file on disk. You must **not** specify an absolute path here, but the path may contain folders separated by '/'! The specified path is joined with the value of the 'output.path' option to determine the location on disk.
 	 */
-	filename?: Filename;
+	filename?: EntryFilename;
 	/**
 	 * Module(s) that are loaded upon startup.
 	 */
 	import: EntryItem;
 	/**
+	 * Specifies the layer in which modules of this entrypoint are placed.
+	 */
+	layer?: Layer;
+	/**
 	 * Options for library.
 	 */
 	library?: LibraryOptions;
+	/**
+	 * The 'publicPath' specifies the public URL address of the output files when referenced in a browser.
+	 */
+	publicPath?: PublicPath;
 	/**
 	 * The name of the runtime chunk. If set a runtime chunk with this name is created or an existing entrypoint is used as runtime.
 	 */
@@ -922,7 +1033,7 @@ export interface LibraryOptions {
 	 */
 	name?: LibraryName;
 	/**
-	 * Type of library (types included by default are 'var', 'module', 'assign', 'this', 'window', 'self', 'global', 'commonjs', 'commonjs2', 'commonjs-module', 'amd', 'amd-require', 'umd', 'umd2', 'jsonp', 'system', but others might be added by plugins).
+	 * Type of library (types included by default are 'var', 'module', 'assign', 'assign-properties', 'this', 'window', 'self', 'global', 'commonjs', 'commonjs2', 'commonjs-module', 'amd', 'amd-require', 'umd', 'umd2', 'jsonp', 'system', but others might be added by plugins).
 	 */
 	type: LibraryType;
 	/**
@@ -981,6 +1092,50 @@ export interface Experiments {
 	 */
 	asyncWebAssembly?: boolean;
 	/**
+	 * Enable build-time execution of modules from the module graph for plugins and loaders.
+	 */
+	executeModule?: boolean;
+	/**
+	 * Enable module and chunk layers.
+	 */
+	layers?: boolean;
+	/**
+	 * Compile entrypoints and import()s only when they are accessed.
+	 */
+	lazyCompilation?:
+		| boolean
+		| {
+				/**
+				 * A custom backend.
+				 */
+				backend?:
+					| ((
+							compiler: import("../lib/Compiler"),
+							client: string,
+							callback: (err?: Error, api?: any) => void
+					  ) => void)
+					| ((
+							compiler: import("../lib/Compiler"),
+							client: string
+					  ) => Promise<any>);
+				/**
+				 * A custom client.
+				 */
+				client?: string;
+				/**
+				 * Enable/disable lazy compilation for entries.
+				 */
+				entries?: boolean;
+				/**
+				 * Enable/disable lazy compilation for import() modules.
+				 */
+				imports?: boolean;
+				/**
+				 * Specify which entrypoints or import()ed modules should be lazily compiled. This is matched with the imported module and not the entrypoint name.
+				 */
+				test?: RegExp | string | ((module: import("../lib/Module")) => boolean);
+		  };
+	/**
 	 * Allow output javascript files as module source type.
 	 */
 	outputModule?: boolean;
@@ -1035,6 +1190,18 @@ export interface ExternalsPresets {
  */
 export interface InfrastructureLogging {
 	/**
+	 * Only appends lines to the output. Avoids updating existing output e. g. for status messages. This option is only used when no custom console is provided.
+	 */
+	appendOnly?: boolean;
+	/**
+	 * Enables/Disables colorful output. This option is only used when no custom console is provided.
+	 */
+	colors?: boolean;
+	/**
+	 * Custom console used for logging.
+	 */
+	console?: Console;
+	/**
 	 * Enable debug logging for specific loggers.
 	 */
 	debug?: boolean | FilterTypes;
@@ -1042,6 +1209,10 @@ export interface InfrastructureLogging {
 	 * Log level.
 	 */
 	level?: "none" | "error" | "warn" | "info" | "log" | "verbose";
+	/**
+	 * Stream used for logging output. Defaults to process.stderr. This option is only used when no custom console is provided.
+	 */
+	stream?: NodeJS.WritableStream;
 }
 /**
  * Custom values available in the loader context.
@@ -1062,47 +1233,55 @@ export interface ModuleOptions {
 	 */
 	exprContextCritical?: boolean;
 	/**
-	 * Enable recursive directory lookup for full dynamic dependencies.
+	 * Enable recursive directory lookup for full dynamic dependencies. Deprecated: This option has moved to 'module.parser.javascript.exprContextRecursive'.
 	 */
 	exprContextRecursive?: boolean;
 	/**
-	 * Sets the default regular expression for full dynamic dependencies.
+	 * Sets the default regular expression for full dynamic dependencies. Deprecated: This option has moved to 'module.parser.javascript.exprContextRegExp'.
 	 */
 	exprContextRegExp?: RegExp | boolean;
 	/**
-	 * Set the default request for full dynamic dependencies.
+	 * Set the default request for full dynamic dependencies. Deprecated: This option has moved to 'module.parser.javascript.exprContextRequest'.
 	 */
 	exprContextRequest?: string;
 	/**
+	 * Specify options for each generator.
+	 */
+	generator?: GeneratorOptionsByModuleType;
+	/**
 	 * Don't parse files matching. It's matched against the full resolved request.
 	 */
-	noParse?: (RegExp | string | Function)[] | RegExp | string | Function;
+	noParse?: NoParse;
+	/**
+	 * Specify options for each parser.
+	 */
+	parser?: ParserOptionsByModuleType;
 	/**
 	 * An array of rules applied for modules.
 	 */
 	rules?: RuleSetRules;
 	/**
-	 * Emit errors instead of warnings when imported names don't exist in imported module.
+	 * Emit errors instead of warnings when imported names don't exist in imported module. Deprecated: This option has moved to 'module.parser.javascript.strictExportPresence'.
 	 */
 	strictExportPresence?: boolean;
 	/**
-	 * Handle the this context correctly according to the spec for namespace objects.
+	 * Handle the this context correctly according to the spec for namespace objects. Deprecated: This option has moved to 'module.parser.javascript.strictThisContextOnImports'.
 	 */
 	strictThisContextOnImports?: boolean;
 	/**
-	 * Enable warnings when using the require function in a not statically analyse-able way.
+	 * Enable warnings when using the require function in a not statically analyse-able way. Deprecated: This option has moved to 'module.parser.javascript.unknownContextCritical'.
 	 */
 	unknownContextCritical?: boolean;
 	/**
-	 * Enable recursive directory lookup when using the require function in a not statically analyse-able way.
+	 * Enable recursive directory lookup when using the require function in a not statically analyse-able way. Deprecated: This option has moved to 'module.parser.javascript.unknownContextRecursive'.
 	 */
 	unknownContextRecursive?: boolean;
 	/**
-	 * Sets the regular expression when using the require function in a not statically analyse-able way.
+	 * Sets the regular expression when using the require function in a not statically analyse-able way. Deprecated: This option has moved to 'module.parser.javascript.unknownContextRegExp'.
 	 */
 	unknownContextRegExp?: RegExp | boolean;
 	/**
-	 * Sets the request when using the require function in a not statically analyse-able way.
+	 * Sets the request when using the require function in a not statically analyse-able way. Deprecated: This option has moved to 'module.parser.javascript.unknownContextRequest'.
 	 */
 	unknownContextRequest?: string;
 	/**
@@ -1110,15 +1289,15 @@ export interface ModuleOptions {
 	 */
 	unsafeCache?: boolean | Function;
 	/**
-	 * Enable warnings for partial dynamic dependencies.
+	 * Enable warnings for partial dynamic dependencies. Deprecated: This option has moved to 'module.parser.javascript.wrappedContextCritical'.
 	 */
 	wrappedContextCritical?: boolean;
 	/**
-	 * Enable recursive directory lookup for partial dynamic dependencies.
+	 * Enable recursive directory lookup for partial dynamic dependencies. Deprecated: This option has moved to 'module.parser.javascript.wrappedContextRecursive'.
 	 */
 	wrappedContextRecursive?: boolean;
 	/**
-	 * Set the inner regular expression for partial dynamic dependencies.
+	 * Set the inner regular expression for partial dynamic dependencies. Deprecated: This option has moved to 'module.parser.javascript.wrappedContextRegExp'.
 	 */
 	wrappedContextRegExp?: RegExp;
 }
@@ -1162,6 +1341,14 @@ export interface RuleSetRule {
 	 * Match the issuer of the module (The module pointing to this module).
 	 */
 	issuer?: RuleSetConditionOrConditionsAbsolute;
+	/**
+	 * Match layer of the issuer of this module (The module pointing to this module).
+	 */
+	issuerLayer?: RuleSetConditionOrConditions;
+	/**
+	 * Specifies the layer in which the module should be placed in.
+	 */
+	layer?: string;
 	/**
 	 * Shortcut for use.loader.
 	 */
@@ -1209,6 +1396,10 @@ export interface RuleSetRule {
 	 */
 	rules?: RuleSetRule[];
 	/**
+	 * Match module scheme.
+	 */
+	scheme?: RuleSetConditionOrConditions;
+	/**
 	 * Flags a module as with or without side effects.
 	 */
 	sideEffects?: boolean;
@@ -1224,6 +1415,40 @@ export interface RuleSetRule {
 	 * Modifiers applied to the module when rule is matched.
 	 */
 	use?: RuleSetUse;
+}
+/**
+ * Logic operators used in a condition matcher.
+ */
+export interface RuleSetLogicalConditions {
+	/**
+	 * Logical AND.
+	 */
+	and?: RuleSetConditions;
+	/**
+	 * Logical NOT.
+	 */
+	not?: RuleSetCondition;
+	/**
+	 * Logical OR.
+	 */
+	or?: RuleSetConditions;
+}
+/**
+ * Logic operators used in a condition matcher.
+ */
+export interface RuleSetLogicalConditionsAbsolute {
+	/**
+	 * Logical AND.
+	 */
+	and?: RuleSetConditionsAbsolute;
+	/**
+	 * Logical NOT.
+	 */
+	not?: RuleSetConditionAbsolute;
+	/**
+	 * Logical OR.
+	 */
+	or?: RuleSetConditionsAbsolute;
 }
 /**
  * Options object for resolving requests.
@@ -1313,6 +1538,10 @@ export interface ResolveOptions {
 	 */
 	plugins?: ("..." | ResolvePluginInstance)[];
 	/**
+	 * Prefer to resolve server-relative URLs (starting with '/') as absolute paths before falling back to resolve in 'resolve.roots'.
+	 */
+	preferAbsolute?: boolean;
+	/**
 	 * Prefer to resolve module requests as relative request and fallback to resolving as module.
 	 */
 	preferRelative?: boolean;
@@ -1325,7 +1554,7 @@ export interface ResolveOptions {
 	 */
 	restrictions?: (RegExp | string)[];
 	/**
-	 * A list of directories in which requests that are server-relative URLs (starting with '/') are resolved. On non-windows system these requests are tried to resolve as absolute path first.
+	 * A list of directories in which requests that are server-relative URLs (starting with '/') are resolved.
 	 */
 	roots?: string[];
 	/**
@@ -1352,7 +1581,7 @@ export interface ResolvePluginInstance {
 	/**
 	 * The run point of the plugin, required method.
 	 */
-	apply: (resolver: import("enhanced-resolve/lib/Resolver")) => void;
+	apply: (resolver: import("enhanced-resolve").Resolver) => void;
 	[k: string]: any;
 }
 /**
@@ -1636,6 +1865,10 @@ export interface OptimizationSplitChunksCacheGroup {
 	 */
 	idHint?: string;
 	/**
+	 * Assign modules to a cache group by module layer.
+	 */
+	layer?: RegExp | string | Function;
+	/**
 	 * Maximum number of requests which are accepted for on-demand loading.
 	 */
 	maxAsyncRequests?: number;
@@ -1697,7 +1930,7 @@ export interface OptimizationSplitChunksCacheGroup {
  */
 export interface Output {
 	/**
-	 * The filename of asset modules as relative path inside the `output.path` directory.
+	 * The filename of asset modules as relative path inside the 'output.path' directory.
 	 */
 	assetModuleFilename?: AssetModuleFilename;
 	/**
@@ -1709,7 +1942,7 @@ export interface Output {
 	 */
 	charset?: Charset;
 	/**
-	 * The filename of non-initial chunks as relative path inside the `output.path` directory.
+	 * Specifies the filename template of output files of non-initial chunks on disk. You must **not** specify an absolute path here, but the path may contain folders separated by '/'! The specified path is joined with the value of the 'output.path' option to determine the location on disk.
 	 */
 	chunkFilename?: ChunkFilename;
 	/**
@@ -1728,6 +1961,10 @@ export interface Output {
 	 * The global variable used by webpack for loading of chunks.
 	 */
 	chunkLoadingGlobal?: ChunkLoadingGlobal;
+	/**
+	 * Clean the output directory before emit.
+	 */
+	clean?: Clean;
 	/**
 	 * Check if to be emitted file already exists and have the same content before writing to output filesystem.
 	 */
@@ -1765,7 +2002,7 @@ export interface Output {
 	 */
 	environment?: Environment;
 	/**
-	 * Specifies the name of each output file on disk. You must **not** specify an absolute path here! The `output.path` option determines the location on disk the files are written to, filename is used solely for naming the individual files.
+	 * Specifies the filename of output files on disk. You must **not** specify an absolute path here, but the path may contain folders separated by '/'! The specified path is joined with the value of the 'output.path' option to determine the location on disk.
 	 */
 	filename?: Filename;
 	/**
@@ -1797,7 +2034,7 @@ export interface Output {
 	 */
 	hotUpdateGlobal?: HotUpdateGlobal;
 	/**
-	 * The filename of the Hot Update Main File. It is inside the `output.path` directory.
+	 * The filename of the Hot Update Main File. It is inside the 'output.path' directory.
 	 */
 	hotUpdateMainFilename?: HotUpdateMainFilename;
 	/**
@@ -1821,7 +2058,7 @@ export interface Output {
 	 */
 	libraryExport?: LibraryExport;
 	/**
-	 * Type of library (types included by default are 'var', 'module', 'assign', 'this', 'window', 'self', 'global', 'commonjs', 'commonjs2', 'commonjs-module', 'amd', 'amd-require', 'umd', 'umd2', 'jsonp', 'system', but others might be added by plugins).
+	 * Type of library (types included by default are 'var', 'module', 'assign', 'assign-properties', 'this', 'window', 'self', 'global', 'commonjs', 'commonjs2', 'commonjs-module', 'amd', 'amd-require', 'umd', 'umd2', 'jsonp', 'system', but others might be added by plugins).
 	 */
 	libraryTarget?: LibraryType;
 	/**
@@ -1837,7 +2074,7 @@ export interface Output {
 	 */
 	pathinfo?: Pathinfo;
 	/**
-	 * The `publicPath` specifies the public URL address of the output files when referenced in a browser.
+	 * The 'publicPath' specifies the public URL address of the output files when referenced in a browser.
 	 */
 	publicPath?: PublicPath;
 	/**
@@ -1845,7 +2082,7 @@ export interface Output {
 	 */
 	scriptType?: ScriptType;
 	/**
-	 * The filename of the SourceMaps for the JavaScript files. They are inside the `output.path` directory.
+	 * The filename of the SourceMaps for the JavaScript files. They are inside the 'output.path' directory.
 	 */
 	sourceMapFilename?: SourceMapFilename;
 	/**
@@ -1853,9 +2090,17 @@ export interface Output {
 	 */
 	sourcePrefix?: SourcePrefix;
 	/**
-	 * Handles exceptions in module loading correctly at a performance cost.
+	 * Handles error in module loading correctly at a performance cost. This will handle module error compatible with the EcmaScript Modules spec.
+	 */
+	strictModuleErrorHandling?: StrictModuleErrorHandling;
+	/**
+	 * Handles exceptions in module loading correctly at a performance cost (Deprecated). This will handle module error compatible with the Node.js CommonJS way.
 	 */
 	strictModuleExceptionHandling?: StrictModuleExceptionHandling;
+	/**
+	 * Use a Trusted Types policy to create urls for chunks. 'output.uniqueName' is used a default policy name. Passing a string sets a custom policy name.
+	 */
+	trustedTypes?: true | string | TrustedTypes;
 	/**
 	 * If `output.libraryTarget` is set to umd and `output.library` is set, setting this to true will name the AMD module.
 	 */
@@ -1869,7 +2114,7 @@ export interface Output {
 	 */
 	wasmLoading?: WasmLoading;
 	/**
-	 * The filename of WebAssembly modules as relative path inside the `output.path` directory.
+	 * The filename of WebAssembly modules as relative path inside the 'output.path' directory.
 	 */
 	webassemblyModuleFilename?: WebassemblyModuleFilename;
 	/**
@@ -1880,6 +2125,19 @@ export interface Output {
 	 * The method of loading WebAssembly Modules (methods included by default are 'fetch' (web/WebWorker), 'async-node' (node.js), but others might be added by plugins).
 	 */
 	workerWasmLoading?: WasmLoading;
+}
+/**
+ * Advanced options for cleaning assets.
+ */
+export interface CleanOptions {
+	/**
+	 * Log the assets that should be removed instead of deleting them.
+	 */
+	dry?: boolean;
+	/**
+	 * Keep these assets.
+	 */
+	keep?: RegExp | string | ((filename: string) => boolean);
 }
 /**
  * The abilities of the environment where the webpack generated code should run.
@@ -1913,6 +2171,15 @@ export interface Environment {
 	 * The environment supports EcmaScript Module syntax to import EcmaScript modules (import ... from '...').
 	 */
 	module?: boolean;
+}
+/**
+ * Use a Trusted Types policy to create urls for chunks.
+ */
+export interface TrustedTypes {
+	/**
+	 * The name of the Trusted Types policy created by webpack to serve bundle chunks.
+	 */
+	policyName?: string;
 }
 /**
  * Configuration object for web performance recommendations.
@@ -2025,7 +2292,7 @@ export interface StatsOptions {
 	 */
 	builtAt?: boolean;
 	/**
-	 * Add information about cached (not built) modules.
+	 * Add information about cached (not built) modules (deprecated: use 'cachedModules' instead).
 	 */
 	cached?: boolean;
 	/**
@@ -2060,6 +2327,10 @@ export interface StatsOptions {
 	 * Add built modules information to chunk information.
 	 */
 	chunkModules?: boolean;
+	/**
+	 * Space to display chunk modules (groups will be collapsed to fit this space, value is in number of modules/group).
+	 */
+	chunkModulesSpace?: number;
 	/**
 	 * Add the origins of chunks and chunk merging info.
 	 */
@@ -2130,7 +2401,7 @@ export interface StatsOptions {
 	/**
 	 * Add details to errors (like resolving log).
 	 */
-	errorDetails?: boolean;
+	errorDetails?: "auto" | boolean;
 	/**
 	 * Add internal stack trace to errors.
 	 */
@@ -2146,15 +2417,15 @@ export interface StatsOptions {
 	/**
 	 * Please use excludeModules instead.
 	 */
-	exclude?: boolean | FilterTypes;
+	exclude?: boolean | ModuleFilterTypes;
 	/**
 	 * Suppress assets that match the specified filters. Filters can be Strings, RegExps or Functions.
 	 */
-	excludeAssets?: FilterTypes;
+	excludeAssets?: AssetFilterTypes;
 	/**
 	 * Suppress modules that match the specified filters. Filters can be Strings, RegExps, Booleans or Functions.
 	 */
-	excludeModules?: boolean | FilterTypes;
+	excludeModules?: boolean | ModuleFilterTypes;
 	/**
 	 * Group assets by how their are related to chunks.
 	 */
@@ -2188,9 +2459,17 @@ export interface StatsOptions {
 	 */
 	groupModulesByExtension?: boolean;
 	/**
+	 * Group modules by their layer.
+	 */
+	groupModulesByLayer?: boolean;
+	/**
 	 * Group modules by their path.
 	 */
 	groupModulesByPath?: boolean;
+	/**
+	 * Group modules by their type.
+	 */
+	groupModulesByType?: boolean;
 	/**
 	 * Add the hash of the compilation.
 	 */
@@ -2228,13 +2507,17 @@ export interface StatsOptions {
 	 */
 	modulesSort?: string;
 	/**
-	 * Space to display modules (groups will be collapsed to fit this space, values is in number of modules/groups).
+	 * Space to display modules (groups will be collapsed to fit this space, value is in number of modules/groups).
 	 */
 	modulesSpace?: number;
 	/**
 	 * Add information about modules nested in other modules (like with module concatenation).
 	 */
 	nestedModules?: boolean;
+	/**
+	 * Space to display modules nested within other modules (groups will be collapsed to fit this space, value is in number of modules/group).
+	 */
+	nestedModulesSpace?: number;
 	/**
 	 * Show reasons why optimization bailed out for modules.
 	 */
@@ -2272,6 +2555,10 @@ export interface StatsOptions {
 	 */
 	relatedAssets?: boolean;
 	/**
+	 * Add information about runtime modules (deprecated: use 'runtimeModules' instead).
+	 */
+	runtime?: boolean;
+	/**
 	 * Add information about runtime modules.
 	 */
 	runtimeModules?: boolean;
@@ -2302,7 +2589,7 @@ export interface StatsOptions {
 	/**
 	 * Suppress listing warnings that match the specified filters (they will still be counted). Filters can be Strings, RegExps or Functions.
 	 */
-	warningsFilter?: FilterTypes;
+	warningsFilter?: WarningFilterTypes;
 }
 /**
  * Options for the watcher.
@@ -2330,6 +2617,71 @@ export interface WatchOptions {
 	stdin?: boolean;
 }
 /**
+ * Options object for data url generation.
+ */
+export interface AssetGeneratorDataUrlOptions {
+	/**
+	 * Asset encoding (defaults to base64).
+	 */
+	encoding?: false | "base64";
+	/**
+	 * Asset mimetype (getting from file extension by default).
+	 */
+	mimetype?: string;
+}
+/**
+ * Generator options for asset/inline modules.
+ */
+export interface AssetInlineGeneratorOptions {
+	/**
+	 * The options for data url generator.
+	 */
+	dataUrl?: AssetGeneratorDataUrl;
+}
+/**
+ * Options object for DataUrl condition.
+ */
+export interface AssetParserDataUrlOptions {
+	/**
+	 * Maximum size of asset that should be inline as modules. Default: 8kb.
+	 */
+	maxSize?: number;
+}
+/**
+ * Parser options for asset modules.
+ */
+export interface AssetParserOptions {
+	/**
+	 * The condition for inlining the asset as DataUrl.
+	 */
+	dataUrlCondition?: AssetParserDataUrlOptions | AssetParserDataUrlFunction;
+}
+/**
+ * Generator options for asset/resource modules.
+ */
+export interface AssetResourceGeneratorOptions {
+	/**
+	 * Emit an output asset from this asset module. This can be set to 'false' to omit emitting e. g. for SSR.
+	 */
+	emit?: boolean;
+	/**
+	 * Specifies the filename template of output files on disk. You must **not** specify an absolute path here, but the path may contain folders separated by '/'! The specified path is joined with the value of the 'output.path' option to determine the location on disk.
+	 */
+	filename?: FilenameTemplate;
+	/**
+	 * The 'publicPath' specifies the public URL address of the output files when referenced in a browser.
+	 */
+	publicPath?: RawPublicPath;
+}
+/**
+ * No generator options are supported for this module type.
+ */
+export interface EmptyGeneratorOptions {}
+/**
+ * No parser options are supported for this module type.
+ */
+export interface EmptyParserOptions {}
+/**
  * An object with entry point description.
  */
 export interface EntryDescriptionNormalized {
@@ -2342,7 +2694,7 @@ export interface EntryDescriptionNormalized {
 	 */
 	dependOn?: string[];
 	/**
-	 * Specifies the name of each output file on disk. You must **not** specify an absolute path here! The `output.path` option determines the location on disk the files are written to, filename is used solely for naming the individual files.
+	 * Specifies the filename of output files on disk. You must **not** specify an absolute path here, but the path may contain folders separated by '/'! The specified path is joined with the value of the 'output.path' option to determine the location on disk.
 	 */
 	filename?: Filename;
 	/**
@@ -2350,9 +2702,17 @@ export interface EntryDescriptionNormalized {
 	 */
 	import?: string[];
 	/**
+	 * Specifies the layer in which modules of this entrypoint are placed.
+	 */
+	layer?: Layer;
+	/**
 	 * Options for library.
 	 */
 	library?: LibraryOptions;
+	/**
+	 * The 'publicPath' specifies the public URL address of the output files when referenced in a browser.
+	 */
+	publicPath?: PublicPath;
 	/**
 	 * The name of the runtime chunk. If set a runtime chunk with this name is created or an existing entrypoint is used as runtime.
 	 */
@@ -2372,11 +2732,187 @@ export interface EntryStaticNormalized {
 	[k: string]: EntryDescriptionNormalized;
 }
 /**
+ * Data object passed as argument when a function is set for 'externals'.
+ */
+export interface ExternalItemFunctionData {
+	/**
+	 * The directory in which the request is placed.
+	 */
+	context?: string;
+	/**
+	 * Contextual information.
+	 */
+	contextInfo?: import("../lib/ModuleFactory").ModuleFactoryCreateDataContextInfo;
+	/**
+	 * The category of the referencing dependencies.
+	 */
+	dependencyType?: string;
+	/**
+	 * Get a resolve function with the current resolver options.
+	 */
+	getResolve?: (
+		options?: ResolveOptions
+	) =>
+		| ((
+				context: string,
+				request: string,
+				callback: (err?: Error, result?: string) => void
+		  ) => void)
+		| ((context: string, request: string) => Promise<string>);
+	/**
+	 * The request as written by the user in the require/import expression/statement.
+	 */
+	request?: string;
+}
+/**
+ * Parser options for javascript modules.
+ */
+export interface JavascriptParserOptions {
+	/**
+	 * Set the value of `require.amd` and `define.amd`. Or disable AMD support.
+	 */
+	amd?: Amd;
+	/**
+	 * Enable/disable special handling for browserify bundles.
+	 */
+	browserify?: boolean;
+	/**
+	 * Enable/disable parsing of CommonJs syntax.
+	 */
+	commonjs?: boolean;
+	/**
+	 * Enable/disable parsing of magic comments in CommonJs syntax.
+	 */
+	commonjsMagicComments?: boolean;
+	/**
+	 * Enable warnings for full dynamic dependencies.
+	 */
+	exprContextCritical?: boolean;
+	/**
+	 * Enable recursive directory lookup for full dynamic dependencies.
+	 */
+	exprContextRecursive?: boolean;
+	/**
+	 * Sets the default regular expression for full dynamic dependencies.
+	 */
+	exprContextRegExp?: RegExp | boolean;
+	/**
+	 * Set the default request for full dynamic dependencies.
+	 */
+	exprContextRequest?: string;
+	/**
+	 * Enable/disable parsing of EcmaScript Modules syntax.
+	 */
+	harmony?: boolean;
+	/**
+	 * Enable/disable parsing of import() syntax.
+	 */
+	import?: boolean;
+	/**
+	 * Include polyfills or mocks for various node stuff.
+	 */
+	node?: Node;
+	/**
+	 * Enable/disable parsing of require.context syntax.
+	 */
+	requireContext?: boolean;
+	/**
+	 * Enable/disable parsing of require.ensure syntax.
+	 */
+	requireEnsure?: boolean;
+	/**
+	 * Enable/disable parsing of require.include syntax.
+	 */
+	requireInclude?: boolean;
+	/**
+	 * Enable/disable parsing of require.js special syntax like require.config, requirejs.config, require.version and requirejs.onError.
+	 */
+	requireJs?: boolean;
+	/**
+	 * Emit errors instead of warnings when imported names don't exist in imported module.
+	 */
+	strictExportPresence?: boolean;
+	/**
+	 * Handle the this context correctly according to the spec for namespace objects.
+	 */
+	strictThisContextOnImports?: boolean;
+	/**
+	 * Enable/disable parsing of System.js special syntax like System.import, System.get, System.set and System.register.
+	 */
+	system?: boolean;
+	/**
+	 * Enable warnings when using the require function in a not statically analyse-able way.
+	 */
+	unknownContextCritical?: boolean;
+	/**
+	 * Enable recursive directory lookup when using the require function in a not statically analyse-able way.
+	 */
+	unknownContextRecursive?: boolean;
+	/**
+	 * Sets the regular expression when using the require function in a not statically analyse-able way.
+	 */
+	unknownContextRegExp?: RegExp | boolean;
+	/**
+	 * Sets the request when using the require function in a not statically analyse-able way.
+	 */
+	unknownContextRequest?: string;
+	/**
+	 * Enable/disable parsing of new URL() syntax.
+	 */
+	url?: "relative" | boolean;
+	/**
+	 * Disable or configure parsing of WebWorker syntax like new Worker() or navigator.serviceWorker.register().
+	 */
+	worker?: string[] | boolean;
+	/**
+	 * Enable warnings for partial dynamic dependencies.
+	 */
+	wrappedContextCritical?: boolean;
+	/**
+	 * Enable recursive directory lookup for partial dynamic dependencies.
+	 */
+	wrappedContextRecursive?: boolean;
+	/**
+	 * Set the inner regular expression for partial dynamic dependencies.
+	 */
+	wrappedContextRegExp?: RegExp;
+	[k: string]: any;
+}
+/**
+ * Options affecting the normal modules (`NormalModuleFactory`).
+ */
+export interface ModuleOptionsNormalized {
+	/**
+	 * An array of rules applied by default for modules.
+	 */
+	defaultRules: RuleSetRules;
+	/**
+	 * Specify options for each generator.
+	 */
+	generator: GeneratorOptionsByModuleType;
+	/**
+	 * Don't parse files matching. It's matched against the full resolved request.
+	 */
+	noParse?: NoParse;
+	/**
+	 * Specify options for each parser.
+	 */
+	parser: ParserOptionsByModuleType;
+	/**
+	 * An array of rules applied for modules.
+	 */
+	rules: RuleSetRules;
+	/**
+	 * Cache the resolving of module requests.
+	 */
+	unsafeCache?: boolean | Function;
+}
+/**
  * Normalized options affecting the output of the compilation. `output` options tell webpack how to write the compiled files to disk.
  */
 export interface OutputNormalized {
 	/**
-	 * The filename of asset modules as relative path inside the `output.path` directory.
+	 * The filename of asset modules as relative path inside the 'output.path' directory.
 	 */
 	assetModuleFilename?: AssetModuleFilename;
 	/**
@@ -2384,7 +2920,7 @@ export interface OutputNormalized {
 	 */
 	charset?: Charset;
 	/**
-	 * The filename of non-initial chunks as relative path inside the `output.path` directory.
+	 * Specifies the filename template of output files of non-initial chunks on disk. You must **not** specify an absolute path here, but the path may contain folders separated by '/'! The specified path is joined with the value of the 'output.path' option to determine the location on disk.
 	 */
 	chunkFilename?: ChunkFilename;
 	/**
@@ -2403,6 +2939,10 @@ export interface OutputNormalized {
 	 * The global variable used by webpack for loading of chunks.
 	 */
 	chunkLoadingGlobal?: ChunkLoadingGlobal;
+	/**
+	 * Clean the output directory before emit.
+	 */
+	clean?: Clean;
 	/**
 	 * Check if to be emitted file already exists and have the same content before writing to output filesystem.
 	 */
@@ -2440,7 +2980,7 @@ export interface OutputNormalized {
 	 */
 	environment?: Environment;
 	/**
-	 * Specifies the name of each output file on disk. You must **not** specify an absolute path here! The `output.path` option determines the location on disk the files are written to, filename is used solely for naming the individual files.
+	 * Specifies the filename of output files on disk. You must **not** specify an absolute path here, but the path may contain folders separated by '/'! The specified path is joined with the value of the 'output.path' option to determine the location on disk.
 	 */
 	filename?: Filename;
 	/**
@@ -2472,7 +3012,7 @@ export interface OutputNormalized {
 	 */
 	hotUpdateGlobal?: HotUpdateGlobal;
 	/**
-	 * The filename of the Hot Update Main File. It is inside the `output.path` directory.
+	 * The filename of the Hot Update Main File. It is inside the 'output.path' directory.
 	 */
 	hotUpdateMainFilename?: HotUpdateMainFilename;
 	/**
@@ -2504,7 +3044,7 @@ export interface OutputNormalized {
 	 */
 	pathinfo?: Pathinfo;
 	/**
-	 * The `publicPath` specifies the public URL address of the output files when referenced in a browser.
+	 * The 'publicPath' specifies the public URL address of the output files when referenced in a browser.
 	 */
 	publicPath?: PublicPath;
 	/**
@@ -2512,7 +3052,7 @@ export interface OutputNormalized {
 	 */
 	scriptType?: ScriptType;
 	/**
-	 * The filename of the SourceMaps for the JavaScript files. They are inside the `output.path` directory.
+	 * The filename of the SourceMaps for the JavaScript files. They are inside the 'output.path' directory.
 	 */
 	sourceMapFilename?: SourceMapFilename;
 	/**
@@ -2520,9 +3060,17 @@ export interface OutputNormalized {
 	 */
 	sourcePrefix?: SourcePrefix;
 	/**
-	 * Handles exceptions in module loading correctly at a performance cost.
+	 * Handles error in module loading correctly at a performance cost. This will handle module error compatible with the EcmaScript Modules spec.
+	 */
+	strictModuleErrorHandling?: StrictModuleErrorHandling;
+	/**
+	 * Handles exceptions in module loading correctly at a performance cost (Deprecated). This will handle module error compatible with the Node.js CommonJS way.
 	 */
 	strictModuleExceptionHandling?: StrictModuleExceptionHandling;
+	/**
+	 * Use a Trusted Types policy to create urls for chunks.
+	 */
+	trustedTypes?: TrustedTypes;
 	/**
 	 * A unique name of the webpack build to avoid multiple webpack runtimes to conflict when using globals.
 	 */
@@ -2532,7 +3080,7 @@ export interface OutputNormalized {
 	 */
 	wasmLoading?: WasmLoading;
 	/**
-	 * The filename of WebAssembly modules as relative path inside the `output.path` directory.
+	 * The filename of WebAssembly modules as relative path inside the 'output.path' directory.
 	 */
 	webassemblyModuleFilename?: WebassemblyModuleFilename;
 	/**
@@ -2615,7 +3163,7 @@ export interface WebpackOptionsNormalized {
 	/**
 	 * Options affecting the normal modules (`NormalModuleFactory`).
 	 */
-	module: ModuleOptions;
+	module: ModuleOptionsNormalized;
 	/**
 	 * Name of the configuration. Used when loading multiple configurations.
 	 */
@@ -2684,4 +3232,115 @@ export interface WebpackOptionsNormalized {
 	 * Options for the watcher.
 	 */
 	watchOptions: WatchOptions;
+}
+/**
+ * If an dependency matches exactly a property of the object, the property value is used as dependency.
+ */
+export interface ExternalItemObjectKnown {
+	/**
+	 * Specify externals depending on the layer.
+	 */
+	byLayer?:
+		| {
+				[k: string]: ExternalItem;
+		  }
+		| ((layer: string | null) => ExternalItem);
+}
+/**
+ * If an dependency matches exactly a property of the object, the property value is used as dependency.
+ */
+export interface ExternalItemObjectUnknown {
+	[k: string]: ExternalItemValue;
+}
+/**
+ * Specify options for each generator.
+ */
+export interface GeneratorOptionsByModuleTypeKnown {
+	/**
+	 * Generator options for asset modules.
+	 */
+	asset?: AssetGeneratorOptions;
+	/**
+	 * Generator options for asset/inline modules.
+	 */
+	"asset/inline"?: AssetInlineGeneratorOptions;
+	/**
+	 * Generator options for asset/resource modules.
+	 */
+	"asset/resource"?: AssetResourceGeneratorOptions;
+	/**
+	 * No generator options are supported for this module type.
+	 */
+	javascript?: EmptyGeneratorOptions;
+	/**
+	 * No generator options are supported for this module type.
+	 */
+	"javascript/auto"?: EmptyGeneratorOptions;
+	/**
+	 * No generator options are supported for this module type.
+	 */
+	"javascript/dynamic"?: EmptyGeneratorOptions;
+	/**
+	 * No generator options are supported for this module type.
+	 */
+	"javascript/esm"?: EmptyGeneratorOptions;
+}
+/**
+ * Specify options for each generator.
+ */
+export interface GeneratorOptionsByModuleTypeUnknown {
+	/**
+	 * Options for generating.
+	 */
+	[k: string]: {
+		[k: string]: any;
+	};
+}
+/**
+ * Specify options for each parser.
+ */
+export interface ParserOptionsByModuleTypeKnown {
+	/**
+	 * Parser options for asset modules.
+	 */
+	asset?: AssetParserOptions;
+	/**
+	 * No parser options are supported for this module type.
+	 */
+	"asset/inline"?: EmptyParserOptions;
+	/**
+	 * No parser options are supported for this module type.
+	 */
+	"asset/resource"?: EmptyParserOptions;
+	/**
+	 * No parser options are supported for this module type.
+	 */
+	"asset/source"?: EmptyParserOptions;
+	/**
+	 * Parser options for javascript modules.
+	 */
+	javascript?: JavascriptParserOptions;
+	/**
+	 * Parser options for javascript modules.
+	 */
+	"javascript/auto"?: JavascriptParserOptions;
+	/**
+	 * Parser options for javascript modules.
+	 */
+	"javascript/dynamic"?: JavascriptParserOptions;
+	/**
+	 * Parser options for javascript modules.
+	 */
+	"javascript/esm"?: JavascriptParserOptions;
+}
+/**
+ * Specify options for each parser.
+ */
+export interface ParserOptionsByModuleTypeUnknown {
+	/**
+	 * Options for parsing.
+	 */
+	[k: string]: {
+		[k: string]: any;
+	};
 }

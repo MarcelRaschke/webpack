@@ -4,8 +4,7 @@ const path = require("path");
 const fs = require("graceful-fs");
 const rimraf = require("rimraf");
 const captureStdio = require("./helpers/captureStdio");
-
-let webpack;
+const webpack = require("..");
 
 /**
  * Escapes regular expression metacharacters
@@ -39,7 +38,6 @@ describe("StatsTestCases", () => {
 	let stderr;
 	beforeEach(() => {
 		stderr = captureStdio(process.stderr, true);
-		webpack = require("..");
 	});
 	afterEach(() => {
 		stderr.restore();
@@ -117,6 +115,11 @@ describe("StatsTestCases", () => {
 			});
 			c.run((err, stats) => {
 				if (err) return done(err);
+				for (const compilation of []
+					.concat(stats.stats || stats)
+					.map(s => s.compilation)) {
+					compilation.logging.delete("webpack.Compilation.ModuleProfile");
+				}
 				if (/error$/.test(testName)) {
 					expect(stats.hasErrors()).toBe(true);
 				} else if (stats.hasErrors()) {

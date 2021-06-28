@@ -234,6 +234,7 @@ declare module "@webassemblyjs/ast" {
 		args: string[];
 		result: string[];
 	}
+	export function moduleContextFromModuleAST(ast: any): any;
 
 	// Node matcher
 	export function isGlobalType(n: Node): boolean;
@@ -250,9 +251,7 @@ declare module "webpack-sources" {
 
 		map(options?: MapOptions): Object;
 
-		sourceAndMap(
-			options?: MapOptions
-		): {
+		sourceAndMap(options?: MapOptions): {
 			source: string | Buffer;
 			map: Object;
 		};
@@ -299,7 +298,8 @@ declare module "webpack-sources" {
 			name: string,
 			sourceMap: Object | string | Buffer,
 			originalSource?: string | Buffer,
-			innerSourceMap?: Object | string | Buffer
+			innerSourceMap?: Object | string | Buffer,
+			removeOriginalSource?: boolean
 		);
 
 		getArgsAsBuffers(): [
@@ -307,7 +307,8 @@ declare module "webpack-sources" {
 			string,
 			Buffer,
 			Buffer | undefined,
-			Buffer | undefined
+			Buffer | undefined,
+			boolean
 		];
 	}
 

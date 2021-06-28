@@ -2,7 +2,7 @@
 
 [DllPlugin documentation](https://webpack.js.org/plugins/dll-plugin)
 
-This is the _reference_ bundle (with the manifests) for [dll user example](https://github.com/webpack/webpack/tree/master/examples/dll-user)
+This is the _reference_ bundle (with the manifests) for [dll user example](https://github.com/webpack/webpack/tree/main/examples/dll-user)
 
 # webpack.config.js
 
@@ -35,7 +35,7 @@ module.exports = {
 # dist/MyDll.alpha.js
 
 ```javascript
-var alpha_bd6d04da4340c44a8be7;alpha_bd6d04da4340c44a8be7 =
+var alpha_bb584d575dc33696660b;alpha_bb584d575dc33696660b =
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ([
 /* 0 */
@@ -90,37 +90,44 @@ module.exports = "module";
 
 <details><summary><code>/* webpack runtime code */</code></summary>
 
-``` js
+```js
 /************************************************************************/
-/******/ 	// The module cache
-/******/ 	var __webpack_module_cache__ = {};
-/******/ 	
-/******/ 	// The require function
-/******/ 	function __webpack_require__(moduleId) {
-/******/ 		// Check if module is in cache
-/******/ 		if(__webpack_module_cache__[moduleId]) {
-/******/ 			return __webpack_module_cache__[moduleId].exports;
-/******/ 		}
-/******/ 		// Create a new module (and put it into the cache)
-/******/ 		var module = __webpack_module_cache__[moduleId] = {
-/******/ 			// no module.id needed
-/******/ 			// no module.loaded needed
-/******/ 			exports: {}
-/******/ 		};
-/******/ 	
-/******/ 		// Execute the module function
-/******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
-/******/ 	
-/******/ 		// Return the exports of the module
-/******/ 		return module.exports;
-/******/ 	}
-/******/ 	
+/******/ // The module cache
+/******/ var __webpack_module_cache__ = {};
+/******/
+/******/ // The require function
+/******/ function __webpack_require__(moduleId) {
+	/******/ // Check if module is in cache
+	/******/ if (__webpack_module_cache__[moduleId]) {
+		/******/ return __webpack_module_cache__[moduleId].exports;
+		/******/
+	}
+	/******/ // Create a new module (and put it into the cache)
+	/******/ var module = (__webpack_module_cache__[moduleId] = {
+		/******/ // no module.id needed
+		/******/ // no module.loaded needed
+		/******/ exports: {}
+		/******/
+	});
+	/******/
+	/******/ // Execute the module function
+	/******/ __webpack_modules__[moduleId](
+		module,
+		module.exports,
+		__webpack_require__
+	);
+	/******/
+	/******/ // Return the exports of the module
+	/******/ return module.exports;
+	/******/
+}
+/******/
 /************************************************************************/
 ```
 
 </details>
 
-``` js
+```js
 /******/ 	// module exports must be returned from runtime so entry inlining is disabled
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
@@ -132,7 +139,7 @@ module.exports = "module";
 # dist/alpha-manifest.json
 
 ```javascript
-{"name":"alpha_bd6d04da4340c44a8be7","content":{"./alpha.js":{"id":1,"buildMeta":{}},"./a.js":{"id":2,"buildMeta":{}},"../node_modules/module.js":{"id":3,"buildMeta":{}}}}
+{"name":"alpha_bb584d575dc33696660b","content":{"./alpha.js":{"id":1,"buildMeta":{}},"./a.js":{"id":2,"buildMeta":{}},"../node_modules/module.js":{"id":3,"buildMeta":{}}}}
 ```
 
 # Info
@@ -142,21 +149,21 @@ module.exports = "module";
 ```
 asset MyDll.alpha.js 2.46 KiB [emitted] (name: alpha)
 asset MyDll.beta.js 2.43 KiB [emitted] (name: beta)
-chunk MyDll.alpha.js (alpha) 84 bytes [entry] [rendered]
+chunk (runtime: alpha) MyDll.alpha.js (alpha) 84 bytes [entry] [rendered]
   > alpha
   dependent modules 72 bytes [dependent] 3 modules
   dll alpha 12 bytes [built] [code generated]
     [used exports unknown]
     dll entry
     used as library export
-chunk MyDll.beta.js (beta) 80 bytes [entry] [rendered]
+chunk (runtime: beta) MyDll.beta.js (beta) 80 bytes [entry] [rendered]
   > beta
   dependent modules 68 bytes [dependent] 3 modules
   dll beta 12 bytes [built] [code generated]
     [used exports unknown]
     dll entry
     used as library export
-webpack 5.0.0 compiled successfully
+webpack 5.11.1 compiled successfully
 ```
 
 ## Production mode
@@ -176,5 +183,5 @@ chunk (runtime: beta) MyDll.beta.js (beta) 80 bytes [entry] [rendered]
   dll beta 12 bytes [built] [code generated]
     dll entry
     used as library export
-webpack 5.0.0 compiled successfully
+webpack 5.11.1 compiled successfully
 ```

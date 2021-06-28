@@ -29,13 +29,19 @@ const describeCases = config => {
 				category.tests.forEach(testName => {
 					const testDirectory = path.join(casesPath, category.name, testName);
 					const filterPath = path.join(testDirectory, "test.filter.js");
-					if (fs.existsSync(filterPath) && !require(filterPath)()) {
+					if (fs.existsSync(filterPath) && !require(filterPath)(config)) {
 						describe.skip(testName, () => {
 							it("filtered", () => {});
 						});
 						return;
 					}
 					describe(testName, () => {
+						let compiler;
+						afterAll(callback => {
+							compiler.close(callback);
+							compiler = undefined;
+						});
+
 						it(
 							testName + " should compile",
 							done => {
@@ -93,7 +99,7 @@ const describeCases = config => {
 									new webpack.LoaderOptionsPlugin(fakeUpdateLoaderOptions)
 								);
 								if (!options.recordsPath) options.recordsPath = recordsPath;
-								const compiler = webpack(options);
+								compiler = webpack(options);
 								compiler.run((err, stats) => {
 									if (err) return done(err);
 									const jsonStats = stats.toJson({
@@ -156,7 +162,8 @@ const describeCases = config => {
 											}
 										},
 										importScripts: url => {
-											_require("./" + url);
+											expect(url).toMatch(/^https:\/\/test\.cases\/path\//);
+											_require(urlToRelativePath(url));
 										},
 										document: {
 											createElement(type) {
@@ -192,6 +199,7 @@ const describeCases = config => {
 										Worker: require("./helpers/createFakeWorker")({
 											outputDirectory
 										}),
+										EventSource: require("./helpers/EventSourceForNode"),
 										location: {
 											href: "https://test.cases/path/index.html",
 											origin: "https://test.cases",
@@ -243,7 +251,7 @@ const describeCases = config => {
 												return JSON.parse(fs.readFileSync(p, "utf-8"));
 											} else {
 												const fn = vm.runInThisContext(
-													"(function(require, module, exports, __dirname, __filename, it, beforeEach, afterEach, expect, self, window, fetch, document, importScripts, Worker, NEXT, STATS) {" +
+													"(function(require, module, exports, __dirname, __filename, it, beforeEach, afterEach, expect, self, window, fetch, document, importScripts, Worker, EventSource, NEXT, STATS) {" +
 														"global.expect = expect;" +
 														'function nsObj(m) { Object.defineProperty(m, Symbol.toStringTag, { value: "Module" }); return m; }' +
 														fs.readFileSync(p, "utf-8") +
@@ -270,6 +278,7 @@ const describeCases = config => {
 													window.document,
 													window.importScripts,
 													window.Worker,
+													window.EventSource,
 													_next,
 													jsonStats
 												);

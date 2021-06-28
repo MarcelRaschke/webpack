@@ -5,6 +5,34 @@ const {
 	optimize: { RealContentHashPlugin }
 } = require("../../../../");
 
+class VerifyAdditionalAssetsPlugin {
+	constructor(stage) {
+		this.stage = stage;
+	}
+
+	apply(compiler) {
+		compiler.hooks.compilation.tap(
+			"VerifyAdditionalAssetsPlugin",
+			compilation => {
+				const alreadySeenAssets = new Set();
+				compilation.hooks.processAssets.tap(
+					{
+						name: "VerifyAdditionalAssetsPlugin",
+						stage: this.stage,
+						additionalAssets: true
+					},
+					assets => {
+						for (const asset of Object.keys(assets)) {
+							expect(alreadySeenAssets).not.toContain(asset);
+							alreadySeenAssets.add(asset);
+						}
+					}
+				);
+			}
+		);
+	}
+}
+
 class HtmlPlugin {
 	constructor(entrypoints) {
 		this.entrypoints = entrypoints;
@@ -82,7 +110,8 @@ class HtmlInlinePlugin {
 							const asset = compilation.getAsset(name);
 							const content = asset.source.source();
 							const matches = [];
-							const regExp = /<script\s+src\s*=\s*"([^"]+)"(?:\s+[^"=\s]+(?:\s*=\s*(?:"[^"]*"|[^\s]+))?)*\s*><\/script>/g;
+							const regExp =
+								/<script\s+src\s*=\s*"([^"]+)"(?:\s+[^"=\s]+(?:\s*=\s*(?:"[^"]*"|[^\s]+))?)*\s*><\/script>/g;
 							let match = regExp.exec(content);
 							while (match) {
 								let url = match[1];
@@ -182,6 +211,11 @@ module.exports = {
 		__filename: false
 	},
 	plugins: [
+		new VerifyAdditionalAssetsPlugin(
+			Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL - 1
+		),
+		// new VerifyAdditionalAssetsPlugin(Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE),
+		// new VerifyAdditionalAssetsPlugin(Compilation.PROCESS_ASSETS_STAGE_REPORT),
 		new HtmlPlugin(["inline", "normal"]),
 		new HtmlInlinePlugin(/inline/),
 		new SriHashSupportPlugin()

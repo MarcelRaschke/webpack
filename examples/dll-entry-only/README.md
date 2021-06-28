@@ -21,8 +21,8 @@ Module `cjs.js` is left as is since it's in CommonJS format.
 The manifest includes `example.js` as the only exposed module and lists the exports as `["a","b","c"]`
 from the corresponding modules `a.js`, `b.js`, and `cjs.js`. None of the other modules are exposed.
 
-Also, see [tree shaking](https://github.com/webpack/webpack/tree/master/examples/harmony-unused)
-and [scope hoisting example](https://github.com/webpack/webpack/tree/master/examples/scope-hoisting).
+Also, see [tree shaking](https://github.com/webpack/webpack/tree/main/examples/harmony-unused)
+and [scope hoisting example](https://github.com/webpack/webpack/tree/main/examples/scope-hoisting).
 
 # example.js
 
@@ -63,7 +63,7 @@ module.exports = {
 # dist/dll.js
 
 ```javascript
-var dll_845506e3d5fbeffab985;dll_845506e3d5fbeffab985 =
+var dll_86cc3668cb72d94ce910;dll_86cc3668cb72d94ce910 =
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ([
 /* 0 */
@@ -102,20 +102,20 @@ __webpack_require__.d(__webpack_exports__, {
   "c": () => /* reexport */ cjs.c
 });
 
-// CONCATENATED MODULE: ./b.js
+;// CONCATENATED MODULE: ./b.js
 // module b
 function b() {
 	return "b";
 }
 
-// CONCATENATED MODULE: ./a.js
+;// CONCATENATED MODULE: ./a.js
 // module a
 var a = "a";
 
 
 // EXTERNAL MODULE: ./cjs.js
 var cjs = __webpack_require__(2);
-// CONCATENATED MODULE: ./example.js
+;// CONCATENATED MODULE: ./example.js
 
 
 
@@ -142,66 +142,90 @@ exports.c = "c";
 
 <details><summary><code>/* webpack runtime code */</code></summary>
 
-``` js
+```js
 /************************************************************************/
-/******/ 	// The module cache
-/******/ 	var __webpack_module_cache__ = {};
-/******/ 	
-/******/ 	// The require function
-/******/ 	function __webpack_require__(moduleId) {
-/******/ 		// Check if module is in cache
-/******/ 		if(__webpack_module_cache__[moduleId]) {
-/******/ 			return __webpack_module_cache__[moduleId].exports;
-/******/ 		}
-/******/ 		// Create a new module (and put it into the cache)
-/******/ 		var module = __webpack_module_cache__[moduleId] = {
-/******/ 			// no module.id needed
-/******/ 			// no module.loaded needed
-/******/ 			exports: {}
-/******/ 		};
-/******/ 	
-/******/ 		// Execute the module function
-/******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
-/******/ 	
-/******/ 		// Return the exports of the module
-/******/ 		return module.exports;
-/******/ 	}
-/******/ 	
+/******/ // The module cache
+/******/ var __webpack_module_cache__ = {};
+/******/
+/******/ // The require function
+/******/ function __webpack_require__(moduleId) {
+	/******/ // Check if module is in cache
+	/******/ if (__webpack_module_cache__[moduleId]) {
+		/******/ return __webpack_module_cache__[moduleId].exports;
+		/******/
+	}
+	/******/ // Create a new module (and put it into the cache)
+	/******/ var module = (__webpack_module_cache__[moduleId] = {
+		/******/ // no module.id needed
+		/******/ // no module.loaded needed
+		/******/ exports: {}
+		/******/
+	});
+	/******/
+	/******/ // Execute the module function
+	/******/ __webpack_modules__[moduleId](
+		module,
+		module.exports,
+		__webpack_require__
+	);
+	/******/
+	/******/ // Return the exports of the module
+	/******/ return module.exports;
+	/******/
+}
+/******/
 /************************************************************************/
-/******/ 	/* webpack/runtime/define property getters */
-/******/ 	(() => {
-/******/ 		// define getter functions for harmony exports
-/******/ 		__webpack_require__.d = (exports, definition) => {
-/******/ 			for(var key in definition) {
-/******/ 				if(__webpack_require__.o(definition, key) && !__webpack_require__.o(exports, key)) {
-/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
-/******/ 				}
-/******/ 			}
-/******/ 		};
-/******/ 	})();
-/******/ 	
-/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
-/******/ 	(() => {
-/******/ 		__webpack_require__.o = (obj, prop) => Object.prototype.hasOwnProperty.call(obj, prop)
-/******/ 	})();
-/******/ 	
-/******/ 	/* webpack/runtime/make namespace object */
-/******/ 	(() => {
-/******/ 		// define __esModule on exports
-/******/ 		__webpack_require__.r = (exports) => {
-/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
-/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
-/******/ 			}
-/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
-/******/ 		};
-/******/ 	})();
-/******/ 	
+/******/ /* webpack/runtime/define property getters */
+/******/ (() => {
+	/******/ // define getter functions for harmony exports
+	/******/ __webpack_require__.d = (exports, definition) => {
+		/******/ for (var key in definition) {
+			/******/ if (
+				__webpack_require__.o(definition, key) &&
+				!__webpack_require__.o(exports, key)
+			) {
+				/******/ Object.defineProperty(exports, key, {
+					enumerable: true,
+					get: definition[key]
+				});
+				/******/
+			}
+			/******/
+		}
+		/******/
+	};
+	/******/
+})();
+/******/
+/******/ /* webpack/runtime/hasOwnProperty shorthand */
+/******/ (() => {
+	/******/ __webpack_require__.o = (obj, prop) =>
+		Object.prototype.hasOwnProperty.call(obj, prop);
+	/******/
+})();
+/******/
+/******/ /* webpack/runtime/make namespace object */
+/******/ (() => {
+	/******/ // define __esModule on exports
+	/******/ __webpack_require__.r = exports => {
+		/******/ if (typeof Symbol !== "undefined" && Symbol.toStringTag) {
+			/******/ Object.defineProperty(exports, Symbol.toStringTag, {
+				value: "Module"
+			});
+			/******/
+		}
+		/******/ Object.defineProperty(exports, "__esModule", { value: true });
+		/******/
+	};
+	/******/
+})();
+/******/
 /************************************************************************/
 ```
 
 </details>
 
-``` js
+```js
 /******/ 	// module exports must be returned from runtime so entry inlining is disabled
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
@@ -213,7 +237,7 @@ exports.c = "c";
 # dist/dll-manifest.json
 
 ```javascript
-{"name":"dll_845506e3d5fbeffab985","content":{"./example.js":{"id":1,"buildMeta":{"exportsType":"namespace"},"exports":["a","b","c"]}}}
+{"name":"dll_86cc3668cb72d94ce910","content":{"./example.js":{"id":1,"buildMeta":{"exportsType":"namespace"},"exports":["a","b","c"]}}}
 ```
 
 # Info
@@ -222,7 +246,7 @@ exports.c = "c";
 
 ```
 asset dll.js 4.58 KiB [emitted] (name: dll)
-chunk dll.js (dll) 211 bytes (javascript) 668 bytes (runtime) [entry] [rendered]
+chunk (runtime: dll) dll.js (dll) 211 bytes (javascript) 668 bytes (runtime) [entry] [rendered]
   > dll
   runtime modules 668 bytes 3 modules
   dependent modules 199 bytes [dependent] 2 modules
@@ -230,13 +254,13 @@ chunk dll.js (dll) 211 bytes (javascript) 668 bytes (runtime) [entry] [rendered]
     [used exports unknown]
     dll entry
     used as library export
-webpack 5.0.0 compiled successfully
+webpack 5.11.1 compiled successfully
 ```
 
 ## Production mode
 
 ```
-asset dll.js 675 bytes [emitted] [minimized] (name: dll)
+asset dll.js 679 bytes [emitted] [minimized] (name: dll)
 chunk (runtime: dll) dll.js (dll) 211 bytes (javascript) 668 bytes (runtime) [entry] [rendered]
   > dll
   runtime modules 668 bytes 3 modules
@@ -244,5 +268,5 @@ chunk (runtime: dll) dll.js (dll) 211 bytes (javascript) 668 bytes (runtime) [en
   dll dll 12 bytes [built] [code generated]
     dll entry
     used as library export
-webpack 5.0.0 compiled successfully
+webpack 5.11.1 compiled successfully
 ```

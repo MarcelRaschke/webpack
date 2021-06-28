@@ -2,7 +2,7 @@ const path = require("path");
 
 module.exports = ({ outputDirectory }) =>
 	class Worker {
-		constructor(url, options) {
+		constructor(url, options = {}) {
 			expect(url).toBeInstanceOf(URL);
 			expect(url.origin).toBe("https://test.cases");
 			expect(url.pathname.startsWith("/path/")).toBe(true);
@@ -14,12 +14,17 @@ const path = require("path");
 const fs = require("fs");
 global.self = global;
 self.URL = URL;
+self.location = new URL(${JSON.stringify(url.toString())});
 const urlToPath = url => {
 	if(url.startsWith("https://test.cases/path/")) url = url.slice(24);
 	return path.resolve(${JSON.stringify(outputDirectory)}, \`./\${url}\`);
 };
 self.importScripts = url => {
-	require(urlToPath(url));
+	${
+		options.type === "module"
+			? `throw new Error("importScripts is not supported in module workers")`
+			: `require(urlToPath(url))`
+	};
 };
 self.fetch = async url => {
 	try {
@@ -57,17 +62,27 @@ require(${JSON.stringify(path.resolve(outputDirectory, file))});
 			this.worker = new (require("worker_threads").Worker)(workerBootstrap, {
 				eval: true
 			});
+
+			this._onmessage = undefined;
 		}
 
 		set onmessage(value) {
-			this.worker.on("message", data => {
-				value({
-					data
-				});
-			});
+			if (this._onmessage) this.worker.off("message", this._onmessage);
+			this.worker.on(
+				"message",
+				(this._onmessage = data => {
+					value({
+						data
+					});
+				})
+			);
 		}
 
 		postMessage(data) {
 			this.worker.postMessage(data);
+		}
+
+		terminate() {
+			return this.worker.terminate();
 		}
 	};

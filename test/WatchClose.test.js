@@ -9,6 +9,7 @@ describe("WatchClose", () => {
 
 	describe("multiple calls watcher", () => {
 		const fixturePath = path.join(__dirname, "fixtures");
+		const outputPath = path.join(__dirname, "js/WatchClose");
 		const filePath = path.join(fixturePath, "a.js");
 
 		let compiler;
@@ -19,13 +20,11 @@ describe("WatchClose", () => {
 				mode: "development",
 				entry: filePath,
 				output: {
-					path: fixturePath,
+					path: outputPath,
 					filename: "bundle.js"
 				}
 			});
-			watcher = compiler.watch({
-				poll: 300
-			});
+			watcher = compiler.watch({ poll: 300 }, () => {});
 		});
 
 		afterEach(() => {
