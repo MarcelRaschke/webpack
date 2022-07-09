@@ -21,7 +21,7 @@
     "graceful-fs": "^4.2.4",
     "json-parse-better-errors": "^1.0.2",
     "loader-runner": "^4.1.0",
-    "mime-types": "^2.1.27",
+    "mime-types": "^2.1.35",
     "neo-async": "^2.6.2",
     "pkg-dir": "^4.2.0",
     "schema-utils": "^3.0.0",
